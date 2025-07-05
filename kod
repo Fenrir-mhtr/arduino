@@ -1,0 +1,102 @@
+#include <ESP8266WiFi.h>
+#include <ArduinoOTA.h>
+#include <Wire.h>
+#include <U8g2lib.h>
+
+// Inicjalizacja biblioteki U8g2 dla SH1106 128×64 przez I2C
+U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+
+// Dane sieci Wi-Fi
+const char* ssid     = "Orange_Swiatlowod_AE60";
+const char* password = "od7og3iGF95YfEZcGG";
+
+// Wyświetlenie czterech wierszy tekstu na OLED
+int screen(const String &a1, const String &b2, const String &c3, const String &d4) {
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_ncenB08_tr);
+
+  // Ustawiamy kolejne wiersze w dopuszczalnych granicach Y (0–63)
+  u8g2.drawStr(0, 16, a1.c_str());
+  u8g2.drawStr(0, 30, b2.c_str());
+  u8g2.drawStr(0, 44, c3.c_str());
+  u8g2.drawStr(0, 58, d4.c_str());
+  u8g2.sendBuffer();
+
+  delay(1000);
+  return 0;
+}
+
+// Próba połączenia z Wi-Fi (z wyświetleniem na OLED)
+void connectToWiFi() {
+  screen("Próba", "Połączenia", "z " + String(ssid), "");
+
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(250);
+    Serial.print(".");
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(125);
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(125);
+  }
+
+  screen("Połączono z", String(ssid), "", "");
+  delay(500);
+
+  // Pobranie IP jako String
+  String ipStr = WiFi.localIP().toString();
+  screen("Adres IP:", ipStr, "", "");
+}
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(LED_BUILTIN, OUTPUT);
+
+  // 1. Połącz ze Wi-Fi (wyświetli komunikaty na OLED)
+  connectToWiFi();
+
+  // 2. Konfiguracja OTA
+  ArduinoOTA.setHostname("esp-ota");
+  ArduinoOTA.onStart([]() {
+    Serial.println("Start OTA update");
+  });
+  ArduinoOTA.onEnd([]() {
+    Serial.println("\nEnd OTA update");
+  });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR)   Serial.println("Auth Failed");
+    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+    else if (error == OTA_END_ERROR)   Serial.println("End Failed");
+  });
+  ArduinoOTA.begin();
+  Serial.println("Gotowy do OTA");
+
+  // 3. Inicjalizacja OLED
+  u8g2.begin();
+}
+
+void loop() {
+  // Obsługa OTA (jeśli ktoś raportuje nowy firmware)
+  ArduinoOTA.handle();
+
+  // Jeśli utracimy Wi-Fi, spróbuj ponownie
+  if (WiFi.status() != WL_CONNECTED) {
+    screen("Utracono", "połączenie", "", "");
+    connectToWiFi();
+  }
+
+  // Główny ekran (możesz to zmienić na dowolne cztery wiersze)
+  screen("Smacznej", "Kawusi", "Jebac", "Kapusi");
+
+  // Proste miganie wbudowanym LED-em
+  digitalWrite(LED_BUILTIN, HIGH);
+  delay(500);
+  digitalWrite(LED_BUILTIN, LOW);
+  delay(500);
+}
