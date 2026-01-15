@@ -1,0 +1,44 @@
+#include <Arduino.h>
+#include <Wire.h>
+#include <U8g2lib.h>
+
+// U8g2 dla SSD1306 128×64 przez I2C na D4(SDA) i D3(SCL)
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ D3, /* data=*/ D4);
+
+// Wyświetlenie czterech wierszy tekstu na OLED
+int screen(const String &a1, const String &b2, const String &c3, const String &d4) {
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_ncenB08_tr);
+
+  u8g2.drawStr(20, 16, a1.c_str());
+  u8g2.drawStr(20, 30, b2.c_str());
+  u8g2.drawStr(20, 44, c3.c_str());
+  u8g2.drawStr(20, 58, d4.c_str());
+  u8g2.sendBuffer();
+
+  delay(1000);
+  return 0;
+}
+
+void setup() {
+  Serial.begin(74880);
+  
+  // Inicjalizacja I2C na D4(SDA) i D3(SCL)
+  Wire.begin(D4, D3);
+  delay(100);
+  
+  // Inicjalizacja OLED
+  u8g2.begin();
+  delay(100);
+  
+  // Test
+  screen("Wemos D1", "OLED Test", "Working!", "U8g2lib");
+  
+  Serial.println("Setup complete!");
+}
+
+void loop() {
+  screen("Smacznej", "Kawusi", "Jebac", "Kapusi");
+  
+  delay(2000);
+}
